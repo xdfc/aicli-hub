@@ -1,0 +1,35 @@
+appId: com.aiclihub.app
+productName: AI CLI Hub
+directories:
+  output: build
+  buildResources: public
+
+files:
+  - dist/**/*
+  - public/**/*
+  - "!**/*.map"
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+
+win:
+  target:
+    - nsis
+    - portable
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+publish:
+  provider: github
+  releaseType: release
