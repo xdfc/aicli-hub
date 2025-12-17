@@ -61,7 +61,11 @@ export default function MainPage() {
             </SelectTrigger>
             <SelectContent>
               {availableCLIs.map((cli) => (
-                <SelectItem key={cli.name} value={cli.name}>
+                <SelectItem 
+                  key={cli.name} 
+                  value={cli.name || '__invalid_cli_name__'}
+                  disabled={!cli.name}
+                >
                   {cli.displayName}
                   {cli.version && (
                     <span className="ml-2 text-xs text-muted-foreground">v{cli.version}</span>
@@ -69,7 +73,7 @@ export default function MainPage() {
                 </SelectItem>
               ))}
               {availableCLIs.length === 0 && (
-                <SelectItem value="" disabled>
+                <SelectItem value="__no-cli__" disabled>
                   No CLI tools available
                 </SelectItem>
               )}

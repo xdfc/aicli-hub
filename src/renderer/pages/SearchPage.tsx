@@ -90,7 +90,11 @@ export default function SearchPage() {
             <SelectContent>
               <SelectItem value="all">All CLI Tools</SelectItem>
               {clis.map((cli) => (
-                <SelectItem key={cli.name} value={cli.name}>
+                <SelectItem 
+                  key={cli.name} 
+                  value={cli.name || '__invalid_cli_name__'}
+                  disabled={!cli.name}
+                >
                   {cli.displayName}
                 </SelectItem>
               ))}

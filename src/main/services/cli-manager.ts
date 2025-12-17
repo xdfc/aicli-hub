@@ -22,17 +22,24 @@ export class CLIManager {
   }
 
   registerDriver(driver: BaseCLIDriver): void {
-    this.drivers.set(driver.getName(), driver)
+    const name = driver.getName();
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Driver name must be a non-empty string');
+    }
+    this.drivers.set(name, driver);
   }
-
+  
   registerCustomDriver(
     name: string,
     displayName: string,
     command: string,
     description?: string
   ): void {
-    const driver = new CustomDriver(name, displayName, command, description)
-    this.drivers.set(name, driver)
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Custom driver name must be a non-empty string');
+    }
+    const driver = new CustomDriver(name, displayName, command, description);
+    this.drivers.set(name, driver);
   }
 
   unregisterDriver(name: string): boolean {
