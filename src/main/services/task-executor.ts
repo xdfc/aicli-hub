@@ -68,7 +68,8 @@ export class TaskExecutor {
         prompt,
         result.output,
         result.error,
-        result.executionTime
+        result.executionTime,
+        workingDirectory || null
       )
 
       mainWindow?.webContents.send('task-complete', {
@@ -82,7 +83,7 @@ export class TaskExecutor {
       const executionTime = Date.now() - (this.state.startTime || Date.now())
 
       // Save error to history
-      this.historyManager.addRecord(cliName, prompt, output, errorMessage, executionTime)
+      this.historyManager.addRecord(cliName, prompt, output, errorMessage, executionTime, workingDirectory || null)
 
       mainWindow?.webContents.send('task-complete', {
         success: false,

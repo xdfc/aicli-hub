@@ -21,7 +21,8 @@ export class HistoryManager {
     prompt: string,
     output: string | null,
     error: string | null,
-    executionTime: number | null
+    executionTime: number | null,
+    workingDirectory: string | null = null
   ): HistoryRecord {
     const record: HistoryRecord = {
       id: uuidv4(),
@@ -32,11 +33,12 @@ export class HistoryManager {
       executionTime,
       timestamp: Date.now(),
       tags: null,
+      workingDirectory,
     }
 
     const stmt = this.db.prepare(`
-      INSERT INTO history (id, cliName, prompt, output, error, executionTime, timestamp, tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO history (id, cliName, prompt, output, error, executionTime, timestamp, tags, workingDirectory)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     stmt.run(
@@ -47,7 +49,8 @@ export class HistoryManager {
       record.error,
       record.executionTime,
       record.timestamp,
-      record.tags
+      record.tags,
+      record.workingDirectory
     )
 
     return record

@@ -62,6 +62,7 @@ interface AppState {
   executeTask: (prompt: string) => Promise<void>
   cancelTask: () => Promise<void>
   appendOutput: (text: string) => void
+  setTaskOutput: (output: string, error: string | null) => void
   completeTask: (success: boolean, error?: string) => void
   clearOutput: () => void
 
@@ -134,11 +135,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectWorkingDirectory: async () => {
     try {
       const api = getAPI()
-      if ('selectFolder' in api) {
-        const path = await (api as { selectFolder: () => Promise<string | null> }).selectFolder()
+      // 更加健壮的调用方式
+      if (typeof api.selectFolder === 'function') {
+        const path = await api.selectFolder()
         if (path) {
           set({ workingDirectory: path })
         }
+      } else {
+        console.warn('selectFolder 方法不可用')
       }
     } catch (error) {
       console.error('Failed to select working directory:', error)
@@ -216,6 +220,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       task: {
         ...state.task,
         output: state.task.output + text,
+      },
+    }))
+  },
+
+  setTaskOutput: (output: string, error: string | null) => {
+    set((state) => ({
+      task: {
+        ...state.task,
+        output,
+        error,
+        isRunning: false,
       },
     }))
   },

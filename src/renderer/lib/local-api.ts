@@ -4,6 +4,7 @@
  */
 
 import type { CLIInfo, HistoryRecord } from '../store/app-store'
+import type { ElectronAPI } from '../global.d'
 
 const STORAGE_KEYS = {
   HISTORY: 'aicli-hub-history',
@@ -65,11 +66,15 @@ function generateId(): string {
 }
 
 // Local API implementation
-export const localAPI = {
+export const localAPI: ElectronAPI = {
   // Task execution - mock implementation
-  executeTask: async (_cliName: string, prompt: string, _workingDirectory?: string | null): Promise<string> => {
+  executeTask: async (_cliName: string, prompt: string): Promise<string> => {
     // In local mode, we just simulate a response
-    const mockOutput = `[本地模式] 收到提示: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"\n\n当前正在本地模式下运行，没有 Electron 后端支持。\n要使用实际的 CLI 工具，请运行完整的 Electron 应用:\n  npm run dev`
+    const mockOutput = `[本地模式] 收到提示: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"
+
+当前正在本地模式下运行，没有 Electron 后端支持。
+要使用实际的 CLI 工具，请运行完整的 Electron 应用:
+  npm run dev`
 
     // Save to history
     const record: HistoryRecord = {
@@ -172,7 +177,11 @@ export const localAPI = {
 
 // Check if running in Electron environment
 export function isElectronEnvironment(): boolean {
-  return typeof window !== 'undefined' && window.electronAPI !== undefined
+  // 更准确的 Electron 环境检测
+  return typeof window !== 'undefined' && 
+         window.electronAPI !== undefined && 
+         typeof window.electronAPI === 'object' &&
+         'selectFolder' in window.electronAPI
 }
 
 // Get the appropriate API (Electron or Local)

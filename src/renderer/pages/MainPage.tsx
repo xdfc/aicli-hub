@@ -23,7 +23,9 @@ export default function MainPage() {
     executeTask,
     cancelTask,
     clearOutput,
+    setTaskOutput,
     workingDirectory,
+    setWorkingDirectory,
     selectWorkingDirectory,
     history,
     selectedHistoryId,
@@ -73,6 +75,16 @@ export default function MainPage() {
   const handleHistoryClick = (record: HistoryRecord) => {
     selectHistory(record.id)
     setPrompt(record.prompt)
+    // 回填 CLI
+    if (record.cliName) {
+      selectCLI(record.cliName)
+    }
+    // 回填工作目录
+    if (record.workingDirectory !== undefined) {
+      setWorkingDirectory(record.workingDirectory)
+    }
+    // 回填输出
+    setTaskOutput(record.output || '', record.error)
   }
 
   const handleDeleteHistory = async (id: string, e: React.MouseEvent) => {
@@ -123,7 +135,7 @@ export default function MainPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 shrink-0 opacity-0 hover:opacity-100"
+                      className="h-6 w-6 shrink-0 opacity-60 hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
                       onClick={(e) => handleDeleteHistory(record.id, e)}
                     >
                       <Trash2 className="h-3 w-3" />

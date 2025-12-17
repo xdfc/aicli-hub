@@ -15,6 +15,9 @@ export interface ElectronAPI {
   // CLI management
   getCLIList: () => Promise<CLIInfo[]>
   updateCLIConfig: (cliName: string, config: Record<string, unknown>) => Promise<void>
+  
+  // Folder selection
+  selectFolder: () => Promise<string | null>
 }
 
 export interface HistoryRecord {

@@ -11,9 +11,17 @@ export function initializeDatabase(db: Database.Database): void {
       error TEXT,
       executionTime INTEGER,
       timestamp INTEGER NOT NULL,
-      tags TEXT
+      tags TEXT,
+      workingDirectory TEXT
     )
   `)
+
+  // Add workingDirectory column if it doesn't exist (for migration)
+  try {
+    db.exec(`ALTER TABLE history ADD COLUMN workingDirectory TEXT`)
+  } catch {
+    // Column already exists, ignore
+  }
 
   // Create indexes for better query performance
   db.exec(`
@@ -42,6 +50,7 @@ export interface HistoryRecord {
   executionTime: number | null
   timestamp: number
   tags: string | null
+  workingDirectory: string | null
 }
 
 export interface CLIConfigRecord {
