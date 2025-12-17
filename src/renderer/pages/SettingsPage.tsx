@@ -56,12 +56,12 @@ export default function SettingsPage() {
   return (
     <ScrollArea className="h-full">
       <div className="p-6 max-w-4xl mx-auto space-y-6">
-        {/* Header */}
+        {/* 头部 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Settings</h1>
+            <h1 className="text-2xl font-bold">设置</h1>
             <p className="text-muted-foreground">
-              Manage your CLI tools and configuration
+              管理您的 CLI 工具和配置
             </p>
           </div>
           <Button
@@ -71,15 +71,15 @@ export default function SettingsPage() {
             className="gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh CLIs
+            刷新 CLI
           </Button>
         </div>
 
         <Separator />
 
-        {/* CLI Tools Section */}
+        {/* CLI 工具部分 */}
         <div>
-          <h2 className="text-lg font-semibold mb-4">CLI Tools</h2>
+          <h2 className="text-lg font-semibold mb-4">CLI 工具</h2>
           <div className="space-y-4">
             {clis.map((cli) => (
               <Card key={cli.name}>
@@ -90,12 +90,12 @@ export default function SettingsPage() {
                       {cli.available ? (
                         <span className="flex items-center gap-1 text-xs text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
                           <CheckCircle className="h-3 w-3" />
-                          Available
+                          可用
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-xs text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
                           <XCircle className="h-3 w-3" />
-                          Not Found
+                          未找到
                         </span>
                       )}
                     </div>
@@ -107,7 +107,7 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Command:</span>
+                    <span className="text-muted-foreground">命令:</span>
                     <code className="px-2 py-1 rounded bg-muted font-mono text-xs">
                       {cli.command}
                     </code>
@@ -116,7 +116,7 @@ export default function SettingsPage() {
                   {cli.available && cli.name !== 'ollama' && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        API Key ({getApiKeyEnvVar(cli.name)})
+                        API 密钥 ({getApiKeyEnvVar(cli.name)})
                       </label>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
@@ -124,7 +124,7 @@ export default function SettingsPage() {
                             type={showApiKeys[cli.name] ? 'text' : 'password'}
                             value={apiKeys[cli.name] ?? (cli.config?.apiKey as string) ?? ''}
                             onChange={(e) => handleApiKeyChange(cli.name, e.target.value)}
-                            placeholder="Enter API key..."
+                            placeholder="输入 API 密钥..."
                             className="pr-10"
                           />
                           <Button
@@ -149,33 +149,32 @@ export default function SettingsPage() {
                           {savedStatus[cli.name] ? (
                             <>
                               <CheckCircle className="h-4 w-4" />
-                              Saved
+                              已保存
                             </>
                           ) : (
                             <>
                               <Save className="h-4 w-4" />
-                              Save
+                              保存
                             </>
                           )}
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Optional: Set the API key for this CLI tool. If not set, the tool will use
-                        the environment variable.
+                        可选: 为此 CLI 工具设置 API 密钥。如果未设置，将使用环境变量。
                       </p>
                     </div>
                   )}
 
                   {cli.name === 'ollama' && cli.available && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Model</label>
+                      <label className="text-sm font-medium">模型</label>
                       <Input
                         value={(cli.config?.model as string) ?? 'llama2'}
                         onChange={(e) => updateCLIConfig(cli.name, { model: e.target.value })}
-                        placeholder="Enter model name (e.g., llama2, mistral)"
+                        placeholder="输入模型名称 (例如 llama2, mistral)"
                       />
                       <p className="text-xs text-muted-foreground">
-                        The Ollama model to use for execution. Make sure the model is pulled first.
+                        用于执行的 Ollama 模型。请确保模型已下载。
                       </p>
                     </div>
                   )}
@@ -187,20 +186,19 @@ export default function SettingsPage() {
 
         <Separator />
 
-        {/* About Section */}
+        {/* 关于部分 */}
         <div>
-          <h2 className="text-lg font-semibold mb-4">About</h2>
+          <h2 className="text-lg font-semibold mb-4">关于</h2>
           <Card>
             <CardHeader>
               <CardTitle>AI CLI Hub</CardTitle>
-              <CardDescription>Version 1.0.0</CardDescription>
+              <CardDescription>版本 1.0.0</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>
-                A unified desktop application for managing multiple AI CLI tools with conversation
-                history and search capabilities.
+                一个统一的桌面应用程序，用于管理多个 AI CLI 工具，具有对话历史和搜索功能。
               </p>
-              <p>Built with Electron, React, and TypeScript.</p>
+              <p>使用 Electron、React 和 TypeScript 构建。</p>
             </CardContent>
           </Card>
         </div>

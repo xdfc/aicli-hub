@@ -20,6 +20,7 @@ export interface HistoryRecord {
   executionTime: number | null
   timestamp: number
   tags: string | null
+  workingDirectory?: string | null
 }
 
 interface TaskState {
@@ -33,6 +34,9 @@ interface AppState {
   // CLI state
   clis: CLIInfo[]
   selectedCLI: string | null
+
+  // Working directory state
+  workingDirectory: string | null
 
   // Task state
   task: TaskState
@@ -50,6 +54,10 @@ interface AppState {
   loadCLIs: () => Promise<void>
   selectCLI: (name: string) => void
   updateCLIConfig: (name: string, config: Record<string, unknown>) => Promise<void>
+
+  // Working directory actions
+  setWorkingDirectory: (path: string | null) => void
+  selectWorkingDirectory: () => Promise<void>
 
   executeTask: (prompt: string) => Promise<void>
   cancelTask: () => Promise<void>
@@ -71,6 +79,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
   clis: [],
   selectedCLI: null,
+  workingDirectory: null,
   task: {
     isRunning: false,
     output: '',
@@ -117,9 +126,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  // Working directory actions
+  setWorkingDirectory: (path: string | null) => {
+    set({ workingDirectory: path })
+  },
+
+  selectWorkingDirectory: async () => {
+    try {
+      const api = getAPI()
+      if ('selectFolder' in api) {
+        const path = await (api as { selectFolder: () => Promise<string | null> }).selectFolder()
+        if (path) {
+          set({ workingDirectory: path })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to select working directory:', error)
+    }
+  },
+
   // Task actions
   executeTask: async (prompt: string) => {
-    const { selectedCLI } = get()
+    const { selectedCLI, workingDirectory } = get()
     if (!selectedCLI) {
       console.error('No CLI selected')
       return
@@ -150,7 +178,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     )
 
     try {
-      const output = await api.executeTask(selectedCLI, prompt)
+      // Pass working directory if available
+      const output = await (api as { executeTask: (cli: string, prompt: string, workingDirectory?: string | null) => Promise<string> }).executeTask(selectedCLI, prompt, workingDirectory)
       // In local mode, we get the output directly
       if (!isElectronEnvironment()) {
         get().appendOutput(output)
@@ -174,7 +203,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         task: {
           ...state.task,
           isRunning: false,
-          error: 'Task cancelled by user',
+          error: '用户取消了任务',
         },
       }))
     } catch (error) {
@@ -196,7 +225,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       task: {
         ...state.task,
         isRunning: false,
-        error: success ? null : error || 'Unknown error',
+        error: success ? null : error || '未知错误',
       },
     }))
   },

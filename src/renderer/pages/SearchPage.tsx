@@ -36,7 +36,7 @@ export default function SearchPage() {
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp)
-    return date.toLocaleString()
+    return date.toLocaleString('zh-CN')
   }
 
   const getCLIDisplayName = (cliName: string): string => {
@@ -65,30 +65,30 @@ export default function SearchPage() {
 
   return (
     <div className="flex h-full">
-      {/* Search Panel */}
+      {/* 搜索面板 */}
       <div className="flex w-96 flex-col border-r">
         <div className="p-4 space-y-4 border-b">
-          {/* Search Input */}
+          {/* 搜索输入 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search prompts and outputs..."
+              placeholder="搜索提示和输出..."
               className="pl-10"
             />
           </div>
 
-          {/* CLI Filter */}
+          {/* CLI 筛选 */}
           <Select
             value={searchCLIFilter || 'all'}
             onValueChange={(value) => setSearchCLIFilter(value === 'all' ? null : value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Filter by CLI" />
+              <SelectValue placeholder="按 CLI 筛选" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All CLI Tools</SelectItem>
+              <SelectItem value="all">所有 CLI 工具</SelectItem>
               {clis.map((cli) => (
                 <SelectItem 
                   key={cli.name} 
@@ -101,23 +101,23 @@ export default function SearchPage() {
             </SelectContent>
           </Select>
 
-          {/* Results Count */}
+          {/* 结果数量 */}
           {searchQuery && (
             <div className="text-sm text-muted-foreground">
-              {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+              找到 {searchResults.length} 条结果
             </div>
           )}
         </div>
 
-        {/* Search Results */}
+        {/* 搜索结果 */}
         <ScrollArea className="flex-1">
           {!searchQuery ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
-              Enter a search term to find records
+              输入搜索词以查找记录
             </div>
           ) : searchResults.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
-              No results found
+              未找到结果
             </div>
           ) : (
             <div className="divide-y">
@@ -157,7 +157,7 @@ export default function SearchPage() {
         </ScrollArea>
       </div>
 
-      {/* Detail Panel */}
+      {/* 详情面板 */}
       <div className="flex-1 flex flex-col min-w-0">
         {selectedResult ? (
           <SearchResultDetail
@@ -169,7 +169,7 @@ export default function SearchPage() {
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select a result to view details</p>
+              <p>选择一条结果查看详情</p>
             </div>
           </div>
         )}
@@ -187,7 +187,7 @@ interface SearchResultDetailProps {
 function SearchResultDetail({ record, cliDisplayName, searchQuery }: SearchResultDetailProps) {
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp)
-    return date.toLocaleString()
+    return date.toLocaleString('zh-CN')
   }
 
   const formatTime = (ms: number | null): string => {
@@ -225,26 +225,26 @@ function SearchResultDetail({ record, cliDisplayName, searchQuery }: SearchResul
           {record.error ? (
             <span className="flex items-center gap-1 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
-              Error
+              错误
             </span>
           ) : (
             <span className="flex items-center gap-1 text-sm text-green-600">
               <CheckCircle className="h-4 w-4" />
-              Success
+              成功
             </span>
           )}
         </div>
         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
           <span>{formatDate(record.timestamp)}</span>
           <span>·</span>
-          <span>Duration: {formatTime(record.executionTime)}</span>
+          <span>耗时: {formatTime(record.executionTime)}</span>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <div>
-            <h3 className="text-sm font-medium mb-2">Prompt</h3>
+            <h3 className="text-sm font-medium mb-2">提示</h3>
             <div className="p-3 rounded-md bg-muted font-mono text-sm whitespace-pre-wrap">
               {highlightMatch(record.prompt, searchQuery)}
             </div>
@@ -253,12 +253,12 @@ function SearchResultDetail({ record, cliDisplayName, searchQuery }: SearchResul
           <Separator />
 
           <div>
-            <h3 className="text-sm font-medium mb-2">Output</h3>
+            <h3 className="text-sm font-medium mb-2">输出</h3>
             <div className="p-3 rounded-md bg-muted font-mono text-sm whitespace-pre-wrap break-words">
               {record.output ? (
                 highlightMatch(record.output, searchQuery)
               ) : (
-                <span className="text-muted-foreground">No output</span>
+                <span className="text-muted-foreground">无输出</span>
               )}
             </div>
           </div>
@@ -267,7 +267,7 @@ function SearchResultDetail({ record, cliDisplayName, searchQuery }: SearchResul
             <>
               <Separator />
               <div>
-                <h3 className="text-sm font-medium mb-2 text-destructive">Error</h3>
+                <h3 className="text-sm font-medium mb-2 text-destructive">错误</h3>
                 <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 font-mono text-sm text-destructive whitespace-pre-wrap">
                   {record.error}
                 </div>

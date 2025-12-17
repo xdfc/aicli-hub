@@ -1,4 +1,4 @@
-import { IpcMain, BrowserWindow } from 'electron'
+import { IpcMain, BrowserWindow, dialog } from 'electron'
 import { HistoryManager } from '../services/history-manager'
 import { CLIManager } from '../services/cli-manager'
 import { TaskExecutor } from '../services/task-executor'
@@ -14,9 +14,9 @@ export function registerIpcHandlers(ipcMain: IpcMain, services: Services): void 
   const { historyManager, cliManager, taskExecutor, getMainWindow } = services
 
   // Task execution handlers
-  ipcMain.handle('execute-task', async (_event, cliName: string, prompt: string) => {
+  ipcMain.handle('execute-task', async (_event, cliName: string, prompt: string, workingDirectory?: string | null) => {
     const mainWindow = getMainWindow()
-    const result = await taskExecutor.executeTask(cliName, prompt, mainWindow)
+    const result = await taskExecutor.executeTask(cliName, prompt, mainWindow, workingDirectory)
     return result
   })
 
@@ -65,6 +65,23 @@ export function registerIpcHandlers(ipcMain: IpcMain, services: Services): void 
       return success
     }
   )
+
+  // Folder selection handler
+  ipcMain.handle('select-folder', async () => {
+    const mainWindow = getMainWindow()
+    if (!mainWindow) return null
+
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: '选择工作目录',
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    return result.filePaths[0]
+  })
 
   // Load saved configs on startup
   const loadSavedConfigs = () => {
