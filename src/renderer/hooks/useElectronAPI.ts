@@ -1,4 +1,5 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
+import { getAPI } from '../lib/local-api'
 
 export interface ElectronAPI {
   executeTask: (cliName: string, prompt: string) => Promise<string>
@@ -41,49 +42,51 @@ export interface CLIInfo {
 }
 
 export function useElectronAPI(): ElectronAPI {
+  const api = useMemo(() => getAPI(), [])
+
   const executeTask = useCallback(
-    (cliName: string, prompt: string) => window.electronAPI.executeTask(cliName, prompt),
-    []
+    (cliName: string, prompt: string) => api.executeTask(cliName, prompt),
+    [api]
   )
 
-  const cancelTask = useCallback(() => window.electronAPI.cancelTask(), [])
+  const cancelTask = useCallback(() => api.cancelTask(), [api])
 
   const onTaskOutput = useCallback(
-    (callback: (output: string) => void) => window.electronAPI.onTaskOutput(callback),
-    []
+    (callback: (output: string) => void) => api.onTaskOutput(callback),
+    [api]
   )
 
   const onTaskComplete = useCallback(
     (callback: (result: { success: boolean; error?: string }) => void) =>
-      window.electronAPI.onTaskComplete(callback),
-    []
+      api.onTaskComplete(callback),
+    [api]
   )
 
   const getHistory = useCallback(
-    (limit?: number, offset?: number) => window.electronAPI.getHistory(limit, offset),
-    []
+    (limit?: number, offset?: number) => api.getHistory(limit, offset),
+    [api]
   )
 
   const searchHistory = useCallback(
-    (query: string, cliName?: string) => window.electronAPI.searchHistory(query, cliName),
-    []
+    (query: string, cliName?: string) => api.searchHistory(query, cliName),
+    [api]
   )
 
   const deleteHistory = useCallback(
-    (id: string) => window.electronAPI.deleteHistory(id),
-    []
+    (id: string) => api.deleteHistory(id),
+    [api]
   )
 
-  const clearHistory = useCallback(() => window.electronAPI.clearHistory(), [])
+  const clearHistory = useCallback(() => api.clearHistory(), [api])
 
-  const getHistoryStats = useCallback(() => window.electronAPI.getHistoryStats(), [])
+  const getHistoryStats = useCallback(() => api.getHistoryStats(), [api])
 
-  const getCLIList = useCallback(() => window.electronAPI.getCLIList(), [])
+  const getCLIList = useCallback(() => api.getCLIList(), [api])
 
   const updateCLIConfig = useCallback(
     (cliName: string, config: Record<string, unknown>) =>
-      window.electronAPI.updateCLIConfig(cliName, config),
-    []
+      api.updateCLIConfig(cliName, config),
+    [api]
   )
 
   return {
