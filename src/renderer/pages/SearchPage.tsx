@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAppStore, HistoryRecord } from '../store/app-store'
 import { Input } from '../components/ui/input'
-import { Button } from '../components/ui/button'
 import {
   Select,
   SelectContent,
@@ -11,7 +10,7 @@ import {
 } from '../components/ui/select'
 import { ScrollArea } from '../components/ui/scroll-area'
 import { Separator } from '../components/ui/separator'
-import { Search, Clock, AlertCircle, CheckCircle, Terminal } from 'lucide-react'
+import { Search, Clock, AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function SearchPage() {
   const [selectedResult, setSelectedResult] = useState<HistoryRecord | null>(null)
@@ -38,12 +37,6 @@ export default function SearchPage() {
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp)
     return date.toLocaleString()
-  }
-
-  const formatTime = (ms: number | null): string => {
-    if (!ms) return '-'
-    if (ms < 1000) return `${ms}ms`
-    return `${(ms / 1000).toFixed(1)}s`
   }
 
   const getCLIDisplayName = (cliName: string): string => {
