@@ -41,6 +41,7 @@ export class QwenDriver extends BaseCLIDriver {
       const subprocess = execa('qwen', args, {
         timeout: options.timeout || 300000,
         reject: false,
+        cwd: options.workingDirectory || undefined,
         env: {
           ...process.env,
           ...(this.config.apiKey ? { QWEN_API_KEY: String(this.config.apiKey) } : {}),

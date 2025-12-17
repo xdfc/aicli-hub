@@ -22,7 +22,7 @@ export default function HistoryPage() {
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp)
-    return date.toLocaleString()
+    return date.toLocaleString('zh-CN')
   }
 
   const formatTime = (ms: number | null): string => {
@@ -48,10 +48,10 @@ export default function HistoryPage() {
 
   return (
     <div className="flex h-full">
-      {/* History List */}
+      {/* 历史列表 */}
       <div className="flex w-80 flex-col border-r">
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="font-semibold">History</h2>
+          <h2 className="font-semibold">历史记录</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -59,14 +59,14 @@ export default function HistoryPage() {
             disabled={history.length === 0}
             className="text-destructive hover:text-destructive"
           >
-            Clear All
+            全部清除
           </Button>
         </div>
 
         <ScrollArea className="flex-1">
           {history.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
-              No history records yet
+              暂无历史记录
             </div>
           ) : (
             <div className="divide-y">
@@ -118,7 +118,7 @@ export default function HistoryPage() {
         </ScrollArea>
       </div>
 
-      {/* Detail Panel */}
+      {/* 详情面板 */}
       <div className="flex-1 flex flex-col min-w-0">
         {selectedRecord ? (
           <HistoryDetail
@@ -130,27 +130,27 @@ export default function HistoryPage() {
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <Terminal className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select a record to view details</p>
+              <p>选择一条记录查看详情</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Clear All Confirmation Dialog */}
+      {/* 清除全部确认对话框 */}
       <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Clear All History</DialogTitle>
+            <DialogTitle>清除全部历史</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete all history records? This action cannot be undone.
+              确定要删除所有历史记录吗？此操作无法撤销。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowClearDialog(false)}>
-              Cancel
+              取消
             </Button>
             <Button variant="destructive" onClick={handleClearAll}>
-              Clear All
+              全部清除
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -168,7 +168,7 @@ interface HistoryDetailProps {
 function HistoryDetail({ record, cliDisplayName, onDelete }: HistoryDetailProps) {
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp)
-    return date.toLocaleString()
+    return date.toLocaleString('zh-CN')
   }
 
   const formatTime = (ms: number | null): string => {
@@ -188,31 +188,31 @@ function HistoryDetail({ record, cliDisplayName, onDelete }: HistoryDetailProps)
             {record.error ? (
               <span className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4" />
-                Error
+                错误
               </span>
             ) : (
               <span className="flex items-center gap-1 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
-                Success
+                成功
               </span>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive">
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete
+            删除
           </Button>
         </div>
         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
           <span>{formatDate(record.timestamp)}</span>
           <span>·</span>
-          <span>Duration: {formatTime(record.executionTime)}</span>
+          <span>耗时: {formatTime(record.executionTime)}</span>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <div>
-            <h3 className="text-sm font-medium mb-2">Prompt</h3>
+            <h3 className="text-sm font-medium mb-2">提示</h3>
             <div className="p-3 rounded-md bg-muted font-mono text-sm whitespace-pre-wrap">
               {record.prompt}
             </div>
@@ -221,10 +221,10 @@ function HistoryDetail({ record, cliDisplayName, onDelete }: HistoryDetailProps)
           <Separator />
 
           <div>
-            <h3 className="text-sm font-medium mb-2">Output</h3>
+            <h3 className="text-sm font-medium mb-2">输出</h3>
             <div className="p-3 rounded-md bg-muted font-mono text-sm whitespace-pre-wrap break-words">
               {record.output || (
-                <span className="text-muted-foreground">No output</span>
+                <span className="text-muted-foreground">无输出</span>
               )}
             </div>
           </div>
@@ -233,7 +233,7 @@ function HistoryDetail({ record, cliDisplayName, onDelete }: HistoryDetailProps)
             <>
               <Separator />
               <div>
-                <h3 className="text-sm font-medium mb-2 text-destructive">Error</h3>
+                <h3 className="text-sm font-medium mb-2 text-destructive">错误</h3>
                 <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 font-mono text-sm text-destructive whitespace-pre-wrap">
                   {record.error}
                 </div>

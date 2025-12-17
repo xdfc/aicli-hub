@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 
 export interface ElectronAPI {
   // Task execution
-  executeTask: (cliName: string, prompt: string) => Promise<string>
+  executeTask: (cliName: string, prompt: string, workingDirectory?: string | null) => Promise<string>
   cancelTask: () => Promise<void>
   onTaskOutput: (callback: (output: string) => void) => () => void
   onTaskComplete: (callback: (result: { success: boolean; error?: string }) => void) => () => void
@@ -17,6 +17,9 @@ export interface ElectronAPI {
   // CLI management
   getCLIList: () => Promise<CLIInfo[]>
   updateCLIConfig: (cliName: string, config: Record<string, unknown>) => Promise<void>
+
+  // Folder selection
+  selectFolder: () => Promise<string | null>
 }
 
 export interface HistoryRecord {
@@ -28,6 +31,7 @@ export interface HistoryRecord {
   executionTime: number | null
   timestamp: number
   tags: string | null
+  workingDirectory?: string | null
 }
 
 export interface HistoryStats {
@@ -47,8 +51,8 @@ export interface CLIInfo {
 
 const electronAPI: ElectronAPI = {
   // Task execution
-  executeTask: (cliName: string, prompt: string) =>
-    ipcRenderer.invoke('execute-task', cliName, prompt),
+  executeTask: (cliName: string, prompt: string, workingDirectory?: string | null) =>
+    ipcRenderer.invoke('execute-task', cliName, prompt, workingDirectory),
 
   cancelTask: () => ipcRenderer.invoke('cancel-task'),
 
@@ -83,6 +87,9 @@ const electronAPI: ElectronAPI = {
 
   updateCLIConfig: (cliName: string, config: Record<string, unknown>) =>
     ipcRenderer.invoke('update-cli-config', cliName, config),
+
+  // Folder selection
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

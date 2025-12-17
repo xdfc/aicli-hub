@@ -45,6 +45,7 @@ export class OllamaDriver extends BaseCLIDriver {
       const subprocess = execa('ollama', args, {
         timeout: options.timeout || 300000,
         reject: false,
+        cwd: options.workingDirectory || undefined,
       })
 
       // Handle abort signal

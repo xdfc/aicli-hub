@@ -18,7 +18,7 @@ const DEFAULT_CLIS: CLIInfo[] = [
     command: 'claude',
     version: null,
     available: true,
-    description: 'Anthropic Claude CLI',
+    description: 'Anthropic Claude 命令行工具',
     config: {},
   },
   {
@@ -27,7 +27,7 @@ const DEFAULT_CLIS: CLIInfo[] = [
     command: 'qwen',
     version: null,
     available: true,
-    description: 'Alibaba Qwen CLI',
+    description: '阿里巴巴通义千问命令行工具',
     config: {},
   },
   {
@@ -36,7 +36,7 @@ const DEFAULT_CLIS: CLIInfo[] = [
     command: 'ollama',
     version: null,
     available: true,
-    description: 'Local LLM with Ollama',
+    description: '本地运行大语言模型',
     config: { model: 'llama2' },
   },
 ]
@@ -67,9 +67,9 @@ function generateId(): string {
 // Local API implementation
 export const localAPI = {
   // Task execution - mock implementation
-  executeTask: async (_cliName: string, prompt: string): Promise<string> => {
+  executeTask: async (_cliName: string, prompt: string, _workingDirectory?: string | null): Promise<string> => {
     // In local mode, we just simulate a response
-    const mockOutput = `[Local Mode] Received prompt: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"\n\nThis is running in local mode without Electron backend.\nTo use actual CLI tools, please run the full Electron application with:\n  npm run dev`
+    const mockOutput = `[本地模式] 收到提示: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"\n\n当前正在本地模式下运行，没有 Electron 后端支持。\n要使用实际的 CLI 工具，请运行完整的 Electron 应用:\n  npm run dev`
 
     // Save to history
     const record: HistoryRecord = {
@@ -161,6 +161,12 @@ export const localAPI = {
     const configs = getFromStorage<Record<string, Record<string, unknown>>>(STORAGE_KEYS.CLI_CONFIGS, {})
     configs[cliName] = { ...configs[cliName], ...config }
     setToStorage(STORAGE_KEYS.CLI_CONFIGS, configs)
+  },
+
+  // Folder selection - not available in local mode
+  selectFolder: async (): Promise<string | null> => {
+    console.warn('Folder selection is not available in local mode')
+    return null
   },
 }
 

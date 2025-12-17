@@ -28,7 +28,8 @@ export class TaskExecutor {
   async executeTask(
     cliName: string,
     prompt: string,
-    mainWindow: BrowserWindow | null
+    mainWindow: BrowserWindow | null,
+    workingDirectory?: string | null
   ): Promise<ExecutionResult> {
     if (this.state.isRunning) {
       throw new Error('A task is already running')
@@ -54,6 +55,7 @@ export class TaskExecutor {
       const result = await driver.execute(prompt, {
         timeout: 300000,
         signal: abortController.signal,
+        workingDirectory,
         onOutput: (chunk: string) => {
           output += chunk
           mainWindow?.webContents.send('task-output', chunk)

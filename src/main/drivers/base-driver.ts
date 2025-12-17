@@ -21,6 +21,7 @@ export interface ExecutionOptions {
   timeout?: number
   onOutput?: (chunk: string) => void
   signal?: AbortSignal
+  workingDirectory?: string | null
 }
 
 export abstract class BaseCLIDriver {

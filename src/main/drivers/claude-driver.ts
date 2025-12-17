@@ -41,6 +41,7 @@ export class ClaudeDriver extends BaseCLIDriver {
       const subprocess = execa('claude', args, {
         timeout: options.timeout || 300000,
         reject: false,
+        cwd: options.workingDirectory || undefined,
         env: {
           ...process.env,
           ...(this.config.apiKey ? { ANTHROPIC_API_KEY: String(this.config.apiKey) } : {}),
