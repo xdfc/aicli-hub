@@ -1,4 +1,4 @@
-import { execa } from 'execa'
+import execa from 'execa'
 import { BaseCLIDriver, CLIInfo, ExecutionResult, ExecutionOptions } from './base-driver'
 
 export class QwenDriver extends BaseCLIDriver {
@@ -41,12 +41,16 @@ export class QwenDriver extends BaseCLIDriver {
       const subprocess = execa('qwen', args, {
         timeout: options.timeout || 300000,
         reject: false,
-        signal: options.signal,
         env: {
           ...process.env,
           ...(this.config.apiKey ? { QWEN_API_KEY: String(this.config.apiKey) } : {}),
         },
       })
+
+      // Handle abort signal
+      if (options.signal) {
+        options.signal.addEventListener('abort', () => subprocess.kill())
+      }
 
       if (options.onOutput && subprocess.stdout) {
         subprocess.stdout.on('data', (chunk: Buffer) => {

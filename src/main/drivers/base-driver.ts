@@ -1,4 +1,4 @@
-import { execa, ExecaChildProcess, Options } from 'execa'
+import execa, { ExecaChildProcess, Options } from 'execa'
 
 export interface CLIInfo {
   name: string
