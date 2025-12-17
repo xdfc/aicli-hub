@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getAPI, isElectronEnvironment } from '../lib/local-api'
 
 export interface CLIInfo {
   name: string
@@ -85,7 +86,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   // CLI actions
   loadCLIs: async () => {
     try {
-      const clis = await window.electronAPI.getCLIList()
+      const api = getAPI()
+      const clis = await api.getCLIList()
       const availableCLIs = clis.filter((cli: CLIInfo) => cli.available)
       set({
         clis,
@@ -102,7 +104,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateCLIConfig: async (name: string, config: Record<string, unknown>) => {
     try {
-      await window.electronAPI.updateCLIConfig(name, config)
+      const api = getAPI()
+      await api.updateCLIConfig(name, config)
       const { clis } = get()
       set({
         clis: clis.map((cli) =>
@@ -131,12 +134,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
     })
 
-    // Set up listeners for streaming output
-    const removeOutputListener = window.electronAPI.onTaskOutput((output: string) => {
+    const api = getAPI()
+
+    // Set up listeners for streaming output (only works in Electron mode)
+    const removeOutputListener = api.onTaskOutput((output: string) => {
       get().appendOutput(output)
     })
 
-    const removeCompleteListener = window.electronAPI.onTaskComplete(
+    const removeCompleteListener = api.onTaskComplete(
       (result: { success: boolean; error?: string }) => {
         get().completeTask(result.success, result.error)
         // Refresh history after task completes
@@ -145,7 +150,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     )
 
     try {
-      await window.electronAPI.executeTask(selectedCLI, prompt)
+      const output = await api.executeTask(selectedCLI, prompt)
+      // In local mode, we get the output directly
+      if (!isElectronEnvironment()) {
+        get().appendOutput(output)
+        get().completeTask(true)
+        get().loadHistory()
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       get().completeTask(false, errorMessage)
@@ -157,7 +168,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   cancelTask: async () => {
     try {
-      await window.electronAPI.cancelTask()
+      const api = getAPI()
+      await api.cancelTask()
       set((state) => ({
         task: {
           ...state.task,
@@ -202,7 +214,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   // History actions
   loadHistory: async () => {
     try {
-      const history = await window.electronAPI.getHistory(100, 0)
+      const api = getAPI()
+      const history = await api.getHistory(100, 0)
       set({ history })
     } catch (error) {
       console.error('Failed to load history:', error)
@@ -215,7 +228,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   deleteHistory: async (id: string) => {
     try {
-      await window.electronAPI.deleteHistory(id)
+      const api = getAPI()
+      await api.deleteHistory(id)
       const { history, selectedHistoryId } = get()
       set({
         history: history.filter((record) => record.id !== id),
@@ -228,7 +242,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   clearAllHistory: async () => {
     try {
-      await window.electronAPI.clearHistory()
+      const api = getAPI()
+      await api.clearHistory()
       set({ history: [], selectedHistoryId: null })
     } catch (error) {
       console.error('Failed to clear history:', error)
@@ -252,7 +267,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     try {
-      const results = await window.electronAPI.searchHistory(
+      const api = getAPI()
+      const results = await api.searchHistory(
         searchQuery,
         searchCLIFilter || undefined
       )
