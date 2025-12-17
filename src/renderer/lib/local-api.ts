@@ -4,11 +4,12 @@
  */
 
 import type { CLIInfo, HistoryRecord } from '../store/app-store'
-import type { ElectronAPI } from '../global.d'
+import type { ElectronAPI, SessionInfo, SessionMessage } from '../global.d'
 
 const STORAGE_KEYS = {
   HISTORY: 'aicli-hub-history',
   CLI_CONFIGS: 'aicli-hub-cli-configs',
+  SESSIONS: 'aicli-hub-sessions',
 }
 
 // Default CLI list for local mode
@@ -42,6 +43,10 @@ const DEFAULT_CLIS: CLIInfo[] = [
   },
 ]
 
+// Local session storage
+let localSessions: Map<string, SessionInfo> = new Map()
+let activeSessionId: string | null = null
+
 // Helper functions for localStorage
 function getFromStorage<T>(key: string, defaultValue: T): T {
   try {
@@ -68,7 +73,7 @@ function generateId(): string {
 // Local API implementation
 export const localAPI: ElectronAPI = {
   // Task execution - mock implementation
-  executeTask: async (_cliName: string, prompt: string): Promise<string> => {
+  executeTask: async (_cliName: string, prompt: string, _workingDirectory?: string | null): Promise<string> => {
     // In local mode, we just simulate a response
     const mockOutput = `[本地模式] 收到提示: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"
 
@@ -106,6 +111,114 @@ export const localAPI: ElectronAPI = {
 
   onTaskComplete: (_callback: (result: { success: boolean; error?: string }) => void): (() => void) => {
     // No events in local mode
+    return () => {}
+  },
+
+  // Session management - mock implementation
+  sessionCreate: async (cliName: string, workingDirectory: string): Promise<string> => {
+    const sessionId = generateId()
+    const session: SessionInfo = {
+      id: sessionId,
+      cliName,
+      workingDirectory,
+      createdAt: Date.now(),
+      messages: [],
+    }
+    localSessions.set(sessionId, session)
+    activeSessionId = sessionId
+    return sessionId
+  },
+
+  sessionSendInput: async (sessionId: string, input: string): Promise<boolean> => {
+    const session = localSessions.get(sessionId)
+    if (!session) return false
+
+    const message: SessionMessage = {
+      id: generateId(),
+      type: 'user',
+      content: input,
+      timestamp: Date.now(),
+    }
+    session.messages.push(message)
+
+    // Mock response
+    setTimeout(() => {
+      const responseMessage: SessionMessage = {
+        id: generateId(),
+        type: 'system',
+        content: `[本地模式] 收到命令: ${input}\n\n这是模拟响应。实际功能需要在 Electron 环境中运行。`,
+        timestamp: Date.now(),
+      }
+      session.messages.push(responseMessage)
+    }, 500)
+
+    return true
+  },
+
+  sessionExecuteCli: async (sessionId: string, _cliName: string, prompt: string): Promise<boolean> => {
+    return localAPI.sessionSendInput(sessionId, prompt)
+  },
+
+  sessionStartCli: async (_sessionId: string, _cliName: string): Promise<boolean> => {
+    return true
+  },
+
+  sessionClose: async (sessionId: string): Promise<boolean> => {
+    if (!localSessions.has(sessionId)) return false
+    localSessions.delete(sessionId)
+    if (activeSessionId === sessionId) {
+      activeSessionId = null
+    }
+    return true
+  },
+
+  sessionGet: async (sessionId: string): Promise<SessionInfo | null> => {
+    return localSessions.get(sessionId) || null
+  },
+
+  sessionGetActive: async (): Promise<string | null> => {
+    return activeSessionId
+  },
+
+  sessionSetActive: async (sessionId: string | null): Promise<boolean> => {
+    if (sessionId === null) {
+      activeSessionId = null
+      return true
+    }
+    if (!localSessions.has(sessionId)) return false
+    activeSessionId = sessionId
+    return true
+  },
+
+  sessionGetAll: async (): Promise<SessionInfo[]> => {
+    return Array.from(localSessions.values())
+  },
+
+  sessionResize: async (_sessionId: string, _cols: number, _rows: number): Promise<boolean> => {
+    return true
+  },
+
+  sessionInterrupt: async (_sessionId: string): Promise<boolean> => {
+    return true
+  },
+
+  onSessionOutput: (_callback: (data: { sessionId: string; data: string }) => void): (() => void) => {
+    return () => {}
+  },
+
+  onSessionCreated: (_callback: (data: { sessionId: string; cliName: string; workingDirectory: string }) => void): (() => void) => {
+    return () => {}
+  },
+
+  onSessionClosed: (_callback: (data: { sessionId: string }) => void): (() => void) => {
+    return () => {}
+  },
+
+  onSessionUserInput: (_callback: (data: { sessionId: string; message: SessionMessage }) => void): (() => void) => {
+    return () => {}
+  },
+
+  onSessionExit: (_callback: (data: { sessionId: string; exitCode: number }) => void): (() => void) => {
     return () => {}
   },
 
@@ -178,8 +291,8 @@ export const localAPI: ElectronAPI = {
 // Check if running in Electron environment
 export function isElectronEnvironment(): boolean {
   // 更准确的 Electron 环境检测
-  return typeof window !== 'undefined' && 
-         window.electronAPI !== undefined && 
+  return typeof window !== 'undefined' &&
+         window.electronAPI !== undefined &&
          typeof window.electronAPI === 'object' &&
          'selectFolder' in window.electronAPI
 }

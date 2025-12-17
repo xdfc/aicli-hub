@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Toaster } from './components/ui/toaster'
 import Sidebar from './components/Sidebar'
 import ChatArea from './components/ChatArea'
@@ -7,12 +7,8 @@ import SettingsPage from './pages/SettingsPage'
 import SearchPage from './pages/SearchPage'
 import { useAppStore } from './store/app-store'
 
-type ViewMode = 'chat' | 'settings' | 'stats'
-
 function App() {
-  const [viewMode, setViewMode] = useState<ViewMode>('chat')
-  const [newConversationOpen, setNewConversationOpen] = useState(false)
-  const { loadCLIs, loadHistory } = useAppStore()
+  const { loadCLIs, loadHistory, viewMode, setViewMode, newConversation } = useAppStore()
 
   useEffect(() => {
     loadCLIs()
@@ -20,7 +16,7 @@ function App() {
   }, [loadCLIs, loadHistory])
 
   const handleNewConversation = () => {
-    setNewConversationOpen(true)
+    newConversation()
   }
 
   const handleOpenSettings = () => {
@@ -70,11 +66,8 @@ function App() {
         </div>
       </div>
 
-      {/* 新建对话弹窗 */}
-      <NewConversationDialog
-        open={newConversationOpen}
-        onOpenChange={setNewConversationOpen}
-      />
+      {/* 新建对话弹窗 - 不再需要，直接在Sidebar中处理 */}
+      <NewConversationDialog />
 
       <Toaster />
     </div>
