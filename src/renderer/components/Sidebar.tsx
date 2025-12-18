@@ -32,6 +32,7 @@ export default function Sidebar({ onNewConversation, onOpenSettings, onOpenStats
     setTaskOutput,
     selectCLI,
     setWorkingDirectory,
+    setViewMode,
   } = useAppStore()
 
   // 按日期分组历史记录
@@ -83,6 +84,8 @@ export default function Sidebar({ onNewConversation, onOpenSettings, onOpenStats
       setWorkingDirectory(record.workingDirectory)
     }
     setTaskOutput(record.output || '', record.error)
+    // 切换到chat视图
+    setViewMode('chat')
   }
 
   const handleDeleteHistory = async (id: string, e: React.MouseEvent) => {

@@ -2,16 +2,66 @@ import { IpcMain, BrowserWindow, dialog } from 'electron'
 import { HistoryManager } from '../services/history-manager'
 import { CLIManager } from '../services/cli-manager'
 import { TaskExecutor } from '../services/task-executor'
+import { SessionManager } from '../services/session-manager'
 
 interface Services {
   historyManager: HistoryManager
   cliManager: CLIManager
   taskExecutor: TaskExecutor
+  sessionManager: SessionManager
   getMainWindow: () => BrowserWindow | null
 }
 
 export function registerIpcHandlers(ipcMain: IpcMain, services: Services): void {
-  const { historyManager, cliManager, taskExecutor, getMainWindow } = services
+  const { historyManager, cliManager, taskExecutor, sessionManager, getMainWindow } = services
+
+  // Session management handlers
+  ipcMain.handle('session-create', async (_event, cliName: string, workingDirectory: string) => {
+    const mainWindow = getMainWindow()
+    sessionManager.setMainWindow(mainWindow)
+    const sessionId = sessionManager.createSession(cliName, workingDirectory)
+    return sessionId
+  })
+
+  ipcMain.handle('session-send-input', async (_event, sessionId: string, input: string) => {
+    return sessionManager.sendInput(sessionId, input)
+  })
+
+  ipcMain.handle('session-execute-cli', async (_event, sessionId: string, cliName: string, prompt: string) => {
+    return sessionManager.executeCliCommand(sessionId, cliName, prompt)
+  })
+
+  ipcMain.handle('session-start-cli', async (_event, sessionId: string, cliName: string) => {
+    return sessionManager.startCli(sessionId, cliName)
+  })
+
+  ipcMain.handle('session-close', async (_event, sessionId: string) => {
+    return sessionManager.closeSession(sessionId)
+  })
+
+  ipcMain.handle('session-get', async (_event, sessionId: string) => {
+    return sessionManager.getSession(sessionId)
+  })
+
+  ipcMain.handle('session-get-active', async () => {
+    return sessionManager.getActiveSessionId()
+  })
+
+  ipcMain.handle('session-set-active', async (_event, sessionId: string | null) => {
+    return sessionManager.setActiveSession(sessionId)
+  })
+
+  ipcMain.handle('session-get-all', async () => {
+    return sessionManager.getAllSessions()
+  })
+
+  ipcMain.handle('session-resize', async (_event, sessionId: string, cols: number, rows: number) => {
+    return sessionManager.resizeSession(sessionId, cols, rows)
+  })
+
+  ipcMain.handle('session-interrupt', async (_event, sessionId: string) => {
+    return sessionManager.sendInterrupt(sessionId)
+  })
 
   // Task execution handlers
   ipcMain.handle('execute-task', async (_event, cliName: string, prompt: string, workingDirectory?: string | null) => {

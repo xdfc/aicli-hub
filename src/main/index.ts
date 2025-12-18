@@ -4,11 +4,13 @@ import { registerIpcHandlers } from './ipc/handlers'
 import { HistoryManager } from './services/history-manager'
 import { CLIManager } from './services/cli-manager'
 import { TaskExecutor } from './services/task-executor'
+import { SessionManager } from './services/session-manager'
 
 let mainWindow: BrowserWindow | null = null
 let historyManager: HistoryManager
 let cliManager: CLIManager
 let taskExecutor: TaskExecutor
+let sessionManager: SessionManager
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
@@ -51,6 +53,7 @@ async function initializeServices(): Promise<void> {
   historyManager = new HistoryManager(dbPath)
   cliManager = new CLIManager()
   taskExecutor = new TaskExecutor(cliManager, historyManager)
+  sessionManager = new SessionManager()
 
   await cliManager.detectAllCLIs()
 }
@@ -62,6 +65,7 @@ app.whenReady().then(async () => {
     historyManager,
     cliManager,
     taskExecutor,
+    sessionManager,
     getMainWindow: () => mainWindow,
   })
 
@@ -82,5 +86,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   taskExecutor?.cancelCurrentTask()
+  sessionManager?.closeAllSessions()
   historyManager?.close()
 })

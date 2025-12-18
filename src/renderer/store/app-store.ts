@@ -23,6 +23,22 @@ export interface HistoryRecord {
   workingDirectory?: string | null
 }
 
+export interface SessionMessage {
+  id: string
+  type: 'user' | 'system'
+  content: string
+  timestamp: number
+}
+
+export interface Session {
+  id: string
+  cliName: string
+  workingDirectory: string
+  createdAt: number
+  output: string
+  isActive: boolean
+}
+
 interface TaskState {
   isRunning: boolean
   output: string
@@ -38,6 +54,12 @@ interface AppState {
   // Working directory state
   workingDirectory: string | null
 
+  // Session state
+  currentSessionId: string | null
+  sessions: Session[]
+  sessionOutput: string
+  isSessionReady: boolean
+
   // Task state
   task: TaskState
 
@@ -50,6 +72,9 @@ interface AppState {
   searchResults: HistoryRecord[]
   searchCLIFilter: string | null
 
+  // View state
+  viewMode: 'chat' | 'settings' | 'stats'
+
   // Actions
   loadCLIs: () => Promise<void>
   selectCLI: (name: string) => void
@@ -59,6 +84,16 @@ interface AppState {
   setWorkingDirectory: (path: string | null) => void
   selectWorkingDirectory: () => Promise<void>
 
+  // Session actions
+  createSession: () => Promise<string | null>
+  closeSession: (sessionId: string) => Promise<void>
+  sendSessionInput: (input: string) => Promise<boolean>
+  appendSessionOutput: (output: string) => void
+  clearSessionOutput: () => void
+  setSessionReady: (ready: boolean) => void
+  interruptSession: () => Promise<void>
+
+  // Task actions
   executeTask: (prompt: string) => Promise<void>
   cancelTask: () => Promise<void>
   appendOutput: (text: string) => void
@@ -66,14 +101,22 @@ interface AppState {
   completeTask: (success: boolean, error?: string) => void
   clearOutput: () => void
 
+  // History actions
   loadHistory: () => Promise<void>
   selectHistory: (id: string | null) => void
   deleteHistory: (id: string) => Promise<void>
   clearAllHistory: () => Promise<void>
 
+  // Search actions
   setSearchQuery: (query: string) => void
   setSearchCLIFilter: (cliName: string | null) => void
   performSearch: () => Promise<void>
+
+  // View actions
+  setViewMode: (mode: 'chat' | 'settings' | 'stats') => void
+
+  // New conversation action
+  newConversation: () => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -81,6 +124,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   clis: [],
   selectedCLI: null,
   workingDirectory: null,
+
+  // Session state
+  currentSessionId: null,
+  sessions: [],
+  sessionOutput: '',
+  isSessionReady: false,
+
   task: {
     isRunning: false,
     output: '',
@@ -92,6 +142,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQuery: '',
   searchResults: [],
   searchCLIFilter: null,
+  viewMode: 'chat',
 
   // CLI actions
   loadCLIs: async () => {
@@ -135,7 +186,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectWorkingDirectory: async () => {
     try {
       const api = getAPI()
-      // 更加健壮的调用方式
       if (typeof api.selectFolder === 'function') {
         const path = await api.selectFolder()
         if (path) {
@@ -149,14 +199,172 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  // Session actions
+  createSession: async () => {
+    const { selectedCLI, workingDirectory } = get()
+    if (!selectedCLI || !workingDirectory) {
+      console.error('需要选择CLI和工作目录才能创建会话')
+      return null
+    }
+
+    try {
+      const api = getAPI()
+
+      // 设置会话输出监听器
+      if (isElectronEnvironment()) {
+        api.onSessionOutput((data) => {
+          if (data.sessionId === get().currentSessionId) {
+            get().appendSessionOutput(data.data)
+          }
+        })
+      }
+
+      const sessionId = await api.sessionCreate(selectedCLI, workingDirectory)
+
+      const newSession: Session = {
+        id: sessionId,
+        cliName: selectedCLI,
+        workingDirectory,
+        createdAt: Date.now(),
+        output: '',
+        isActive: true,
+      }
+
+      set((state) => ({
+        currentSessionId: sessionId,
+        sessions: [...state.sessions, newSession],
+        sessionOutput: '',
+        isSessionReady: true,
+        selectedHistoryId: null,
+        task: {
+          isRunning: false,
+          output: '',
+          error: null,
+          startTime: null,
+        },
+      }))
+
+      return sessionId
+    } catch (error) {
+      console.error('Failed to create session:', error)
+      return null
+    }
+  },
+
+  closeSession: async (sessionId: string) => {
+    try {
+      const api = getAPI()
+      await api.sessionClose(sessionId)
+
+      set((state) => ({
+        sessions: state.sessions.filter((s) => s.id !== sessionId),
+        currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId,
+        sessionOutput: state.currentSessionId === sessionId ? '' : state.sessionOutput,
+        isSessionReady: state.currentSessionId === sessionId ? false : state.isSessionReady,
+      }))
+    } catch (error) {
+      console.error('Failed to close session:', error)
+    }
+  },
+
+  sendSessionInput: async (input: string) => {
+    const { currentSessionId } = get()
+    if (!currentSessionId) {
+      console.error('No active session')
+      return false
+    }
+
+    try {
+      const api = getAPI()
+
+      // 显示用户输入
+      get().appendSessionOutput(`\n$ ${input}\n`)
+
+      // 设置运行状态
+      set((state) => ({
+        task: {
+          ...state.task,
+          isRunning: true,
+          startTime: Date.now(),
+        },
+      }))
+
+      // 发送输入到会话
+      const success = await api.sessionSendInput(currentSessionId, input)
+
+      return success
+    } catch (error) {
+      console.error('Failed to send session input:', error)
+      set((state) => ({
+        task: {
+          ...state.task,
+          isRunning: false,
+          error: String(error),
+        },
+      }))
+      return false
+    }
+  },
+
+  appendSessionOutput: (output: string) => {
+    set((state) => ({
+      sessionOutput: state.sessionOutput + output,
+      task: {
+        ...state.task,
+        output: state.task.output + output,
+      },
+    }))
+  },
+
+  clearSessionOutput: () => {
+    set({
+      sessionOutput: '',
+      task: {
+        isRunning: false,
+        output: '',
+        error: null,
+        startTime: null,
+      },
+    })
+  },
+
+  setSessionReady: (ready: boolean) => {
+    set({ isSessionReady: ready })
+  },
+
+  interruptSession: async () => {
+    const { currentSessionId } = get()
+    if (!currentSessionId) return
+
+    try {
+      const api = getAPI()
+      await api.sessionInterrupt(currentSessionId)
+      set((state) => ({
+        task: {
+          ...state.task,
+          isRunning: false,
+        },
+      }))
+    } catch (error) {
+      console.error('Failed to interrupt session:', error)
+    }
+  },
+
   // Task actions
   executeTask: async (prompt: string) => {
-    const { selectedCLI, workingDirectory } = get()
+    const { selectedCLI, workingDirectory, currentSessionId } = get()
     if (!selectedCLI) {
       console.error('No CLI selected')
       return
     }
 
+    // 如果有活跃会话，使用会话模式
+    if (currentSessionId) {
+      await get().sendSessionInput(prompt)
+      return
+    }
+
+    // 否则使用传统模式
     set({
       task: {
         isRunning: true,
@@ -168,7 +376,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const api = getAPI()
 
-    // Set up listeners for streaming output (only works in Electron mode)
     const removeOutputListener = api.onTaskOutput((output: string) => {
       get().appendOutput(output)
     })
@@ -176,15 +383,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const removeCompleteListener = api.onTaskComplete(
       (result: { success: boolean; error?: string }) => {
         get().completeTask(result.success, result.error)
-        // Refresh history after task completes
         get().loadHistory()
       }
     )
 
     try {
-      // Pass working directory if available
-      const output = await (api as { executeTask: (cli: string, prompt: string, workingDirectory?: string | null) => Promise<string> }).executeTask(selectedCLI, prompt, workingDirectory)
-      // In local mode, we get the output directly
+      const output = await api.executeTask(selectedCLI, prompt, workingDirectory)
       if (!isElectronEnvironment()) {
         get().appendOutput(output)
         get().completeTask(true)
@@ -200,6 +404,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   cancelTask: async () => {
+    const { currentSessionId } = get()
+
+    // 如果有活跃会话，中断会话
+    if (currentSessionId) {
+      await get().interruptSession()
+      return
+    }
+
     try {
       const api = getAPI()
       await api.cancelTask()
@@ -321,5 +533,34 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error('Failed to search history:', error)
       set({ searchResults: [] })
     }
+  },
+
+  // View actions
+  setViewMode: (mode: 'chat' | 'settings' | 'stats') => {
+    set({ viewMode: mode })
+  },
+
+  // New conversation action - 重置状态并回到对话页
+  newConversation: () => {
+    // 关闭当前会话
+    const { currentSessionId } = get()
+    if (currentSessionId) {
+      const api = getAPI()
+      api.sessionClose(currentSessionId).catch(console.error)
+    }
+
+    set({
+      currentSessionId: null,
+      sessionOutput: '',
+      isSessionReady: false,
+      selectedHistoryId: null,
+      viewMode: 'chat',
+      task: {
+        isRunning: false,
+        output: '',
+        error: null,
+        startTime: null,
+      },
+    })
   },
 }))
