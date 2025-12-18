@@ -11,6 +11,7 @@ export interface SessionInfo {
   workingDirectory: string
   createdAt: number
   messages: SessionMessage[]
+  output: string
 }
 
 export interface ElectronAPI {
@@ -62,6 +63,7 @@ export interface HistoryRecord {
   executionTime: number | null
   timestamp: number
   tags: string | null
+  workingDirectory?: string | null
 }
 
 export interface HistoryStats {

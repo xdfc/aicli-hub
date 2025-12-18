@@ -9,12 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select'
-import { Terminal, FolderOpen, Play, Send, Square, Trash2 } from 'lucide-react'
-import { Textarea } from './ui/textarea'
+import { Terminal, FolderOpen, Play, Send, Square, Trash2, XCircle } from 'lucide-react'
+import { Input } from './ui/input'
 
 export default function ChatArea() {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [prompt, setPrompt] = useState('')
 
   const {
@@ -31,6 +31,7 @@ export default function ChatArea() {
     currentSessionId,
     sessionOutput,
     createSession,
+    closeCurrentSession,
   } = useAppStore()
 
   const availableCLIs = clis.filter((cli) => cli.available)
@@ -67,13 +68,6 @@ export default function ChatArea() {
     }
   }, [task.output, selectedHistory, sessionOutput])
 
-  // 自动调整文本框高度
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
-    }
-  }, [prompt])
 
   // 保存草稿到 localStorage
   useEffect(() => {
@@ -104,17 +98,22 @@ export default function ChatArea() {
     await executeTask(inputPrompt)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter 发送，Shift+Enter 不处理（单行输入）
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
 
+  const handleCloseSession = async () => {
+    await closeCurrentSession()
+  }
+
   const handleClear = () => {
     setPrompt('')
     localStorage.removeItem('chat-draft')
-    textareaRef.current?.focus()
+    inputRef.current?.focus()
   }
 
   // 显示的内容
@@ -279,9 +278,21 @@ export default function ChatArea() {
               </>
             )}
             {currentSessionId && (
-              <span className="text-xs bg-green-500/20 text-green-600 px-2 py-1 rounded">
-                会话活跃
-              </span>
+              <>
+                <span className="text-xs bg-green-500/20 text-green-600 px-2 py-1 rounded">
+                  会话活跃
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCloseSession}
+                  className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  title="关闭会话"
+                >
+                  <XCircle className="h-4 w-4" />
+                  关闭会话
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -312,31 +323,33 @@ export default function ChatArea() {
 
       {/* 输入区域 - 会话活跃时显示 */}
       {(currentSessionId || (selectedCLI && workingDirectory && !selectedHistory)) && (
-        <div className="border-t bg-background p-4">
-          <div className="flex flex-col gap-3">
-            <div className="relative">
-              <Textarea
-                ref={textareaRef}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={currentSessionId ? "输入命令... (Ctrl+Enter 执行)" : "请先开始会话"}
-                disabled={task.isRunning || !currentSessionId}
-                className="min-h-[60px] max-h-[200px] pr-20 resize-none font-mono text-sm"
-                rows={2}
-              />
-              <div className="absolute right-3 bottom-3 text-xs text-muted-foreground">
-                {prompt.length}
-              </div>
-            </div>
+        <div className="border-t bg-zinc-900 p-3">
+          <div className="flex items-center gap-2">
+            {/* 终端提示符 */}
+            <span className="text-green-400 font-mono text-sm shrink-0">
+              {currentCLIName} &gt;
+            </span>
 
-            <div className="flex items-center justify-end gap-2">
+            {/* 命令输入框 */}
+            <Input
+              ref={inputRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={currentSessionId ? "输入命令后按 Enter 执行..." : "请先开始会话"}
+              disabled={task.isRunning || !currentSessionId}
+              className="flex-1 bg-transparent border-none text-green-400 font-mono text-sm placeholder:text-green-400/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+
+            {/* 操作按钮 */}
+            <div className="flex items-center gap-1 shrink-0">
               {prompt && !task.isRunning && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleClear}
                   title="清空"
+                  className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-400/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -346,19 +359,21 @@ export default function ChatArea() {
                 <Button
                   onClick={cancelTask}
                   variant="destructive"
-                  className="gap-2"
+                  size="sm"
+                  className="gap-1"
                 >
-                  <Square className="h-4 w-4" />
+                  <Square className="h-3 w-3" />
                   中断
                 </Button>
               ) : (
                 <Button
                   onClick={handleSend}
                   disabled={!prompt.trim() || !currentSessionId}
-                  className="gap-2"
+                  size="sm"
+                  className="gap-1 bg-green-600 hover:bg-green-700"
                 >
-                  <Send className="h-4 w-4" />
-                  发送
+                  <Send className="h-3 w-3" />
+                  执行
                 </Button>
               )}
             </div>

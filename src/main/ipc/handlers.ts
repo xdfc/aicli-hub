@@ -36,7 +36,29 @@ export function registerIpcHandlers(ipcMain: IpcMain, services: Services): void 
   })
 
   ipcMain.handle('session-close', async (_event, sessionId: string) => {
-    return sessionManager.closeSession(sessionId)
+    const result = sessionManager.closeSession(sessionId)
+
+    // 如果关闭成功且有会话数据，保存到历史记录
+    if (result.success && result.sessionData) {
+      const { sessionData } = result
+      // 提取用户发送的所有消息作为 prompt
+      const userMessages = sessionData.messages
+        .filter((m) => m.type === 'user')
+        .map((m) => m.content)
+        .join('\n')
+
+      // 保存会话为历史记录
+      historyManager.addRecord(
+        sessionData.cliName,
+        userMessages || '(CLI会话)',
+        sessionData.output,
+        null, // error
+        Date.now() - sessionData.createdAt, // executionTime
+        sessionData.workingDirectory
+      )
+    }
+
+    return result.success
   })
 
   ipcMain.handle('session-get', async (_event, sessionId: string) => {

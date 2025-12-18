@@ -123,6 +123,7 @@ export const localAPI: ElectronAPI = {
       workingDirectory,
       createdAt: Date.now(),
       messages: [],
+      output: '',
     }
     localSessions.set(sessionId, session)
     activeSessionId = sessionId

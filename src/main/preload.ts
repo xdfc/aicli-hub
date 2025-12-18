@@ -13,6 +13,7 @@ export interface SessionInfo {
   workingDirectory: string
   createdAt: number
   messages: SessionMessage[]
+  output: string
 }
 
 export interface ElectronAPI {

@@ -87,6 +87,7 @@ interface AppState {
   // Session actions
   createSession: () => Promise<string | null>
   closeSession: (sessionId: string) => Promise<void>
+  closeCurrentSession: () => Promise<void>
   sendSessionInput: (input: string) => Promise<boolean>
   appendSessionOutput: (output: string) => void
   clearSessionOutput: () => void
@@ -262,8 +263,39 @@ export const useAppStore = create<AppState>((set, get) => ({
         sessionOutput: state.currentSessionId === sessionId ? '' : state.sessionOutput,
         isSessionReady: state.currentSessionId === sessionId ? false : state.isSessionReady,
       }))
+
+      // 刷新历史记录
+      await get().loadHistory()
     } catch (error) {
       console.error('Failed to close session:', error)
+    }
+  },
+
+  closeCurrentSession: async () => {
+    const { currentSessionId } = get()
+    if (!currentSessionId) return
+
+    try {
+      const api = getAPI()
+      await api.sessionClose(currentSessionId)
+
+      set({
+        currentSessionId: null,
+        sessionOutput: '',
+        isSessionReady: false,
+        selectedHistoryId: null,
+        task: {
+          isRunning: false,
+          output: '',
+          error: null,
+          startTime: null,
+        },
+      })
+
+      // 刷新历史记录
+      await get().loadHistory()
+    } catch (error) {
+      console.error('Failed to close current session:', error)
     }
   },
 
