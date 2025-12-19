@@ -10,9 +10,10 @@ import {
   BarChart2,
   Calendar,
   Trash2,
-  MessageSquare,
+  Terminal,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Clock
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -98,6 +99,30 @@ export default function Sidebar({ onNewConversation, onOpenSettings, onOpenStats
     return text.substring(0, maxLength) + '...'
   }
 
+  // 格式化执行时长
+  const formatDuration = (ms: number | null): string => {
+    if (!ms) return ''
+    if (ms < 1000) return `${ms}ms`
+    if (ms < 60000) return `${Math.round(ms / 1000)}秒`
+    if (ms < 3600000) return `${Math.round(ms / 60000)}分钟`
+    return `${Math.round(ms / 3600000)}小时`
+  }
+
+  // 获取会话的命令数量
+  const getCommandCount = (prompt: string): number => {
+    if (!prompt || prompt === '(CLI会话)') return 0
+    return prompt.split('\n').filter((line) => line.trim()).length
+  }
+
+  // 获取会话标题（第一个命令或默认文本）
+  const getSessionTitle = (record: HistoryRecord): string => {
+    if (!record.prompt || record.prompt === '(CLI会话)') {
+      return 'CLI 会话'
+    }
+    const firstCommand = record.prompt.split('\n')[0].trim()
+    return truncateText(firstCommand, 35)
+  }
+
   return (
     <div className="flex h-full w-[280px] flex-col border-r bg-muted/30">
       {/* 新建对话按钮 */}
@@ -142,40 +167,57 @@ export default function Sidebar({ onNewConversation, onOpenSettings, onOpenStats
                 </div>
                 {/* 对话列表 */}
                 <div className="space-y-1 px-2">
-                  {group.records.map((record) => (
-                    <div
-                      key={record.id}
-                      onClick={() => handleHistoryClick(record)}
-                      className={`group flex items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-colors ${
-                        selectedHistoryId === record.id
-                          ? 'bg-accent text-accent-foreground'
-                          : 'hover:bg-accent/50'
-                      }`}
-                    >
-                      <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">{truncateText(record.prompt)}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className="text-xs text-muted-foreground">
-                            {getCLIDisplayName(record.cliName)}
-                          </span>
-                          {record.error ? (
-                            <AlertCircle className="h-3 w-3 text-destructive" />
-                          ) : (
-                            <CheckCircle className="h-3 w-3 text-green-600" />
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={(e) => handleDeleteHistory(record.id, e)}
+                  {group.records.map((record) => {
+                    const commandCount = getCommandCount(record.prompt)
+                    const sessionTitle = getSessionTitle(record)
+                    const duration = formatDuration(record.executionTime)
+
+                    return (
+                      <div
+                        key={record.id}
+                        onClick={() => handleHistoryClick(record)}
+                        className={`group flex items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-colors ${
+                          selectedHistoryId === record.id
+                            ? 'bg-accent text-accent-foreground'
+                            : 'hover:bg-accent/50'
+                        }`}
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
+                        <Terminal className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate font-medium">{sessionTitle}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">
+                              {getCLIDisplayName(record.cliName)}
+                            </span>
+                            {commandCount > 1 && (
+                              <span className="text-xs text-muted-foreground">
+                                {commandCount} 条命令
+                              </span>
+                            )}
+                            {duration && (
+                              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {duration}
+                              </span>
+                            )}
+                            {record.error ? (
+                              <AlertCircle className="h-3 w-3 text-destructive" />
+                            ) : (
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={(e) => handleDeleteHistory(record.id, e)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             ))}

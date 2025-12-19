@@ -10,6 +10,7 @@ export interface Session {
   pty: pty.IPty
   createdAt: number
   messages: SessionMessage[]
+  output: string // 保存完整的会话输出
 }
 
 export interface SessionMessage {
@@ -34,11 +35,11 @@ export class SessionManager {
   createSession(cliName: string, workingDirectory: string): string {
     const sessionId = uuidv4()
 
-    // 根据CLI名称确定shell和初始命令
-    const shell = this.getShellForPlatform()
+    // 获取对应CLI的启动命令
+    const { command, args } = this.getCliCommand(cliName)
 
-    // 创建PTY
-    const ptyProcess = pty.spawn(shell, [], {
+    // 创建PTY，直接启动CLI工具
+    const ptyProcess = pty.spawn(command, args, {
       name: 'xterm-256color',
       cols: 120,
       rows: 30,
@@ -56,6 +57,7 @@ export class SessionManager {
       pty: ptyProcess,
       createdAt: Date.now(),
       messages: [],
+      output: '',
     }
 
     // 监听PTY输出
@@ -79,6 +81,23 @@ export class SessionManager {
     })
 
     return sessionId
+  }
+
+  /**
+   * 获取CLI启动命令
+   */
+  private getCliCommand(cliName: string): { command: string; args: string[] } {
+    switch (cliName) {
+      case 'claude':
+        return { command: 'claude', args: [] }
+      case 'qwen':
+        return { command: 'qwen', args: ['chat'] }
+      case 'ollama':
+        return { command: 'ollama', args: ['run', 'llama2'] }
+      default:
+        // 对于自定义CLI，使用shell
+        return { command: this.getShellForPlatform(), args: [] }
+    }
   }
 
   /**
@@ -177,6 +196,9 @@ export class SessionManager {
     const session = this.sessions.get(sessionId)
     if (!session) return
 
+    // 累积输出
+    session.output += data
+
     // 发送输出到前端
     this.mainWindow?.webContents.send('session-output', {
       sessionId,
@@ -203,12 +225,22 @@ export class SessionManager {
   }
 
   /**
-   * 关闭会话
+   * 关闭会话并返回会话信息
    */
-  closeSession(sessionId: string): boolean {
+  closeSession(sessionId: string): { success: boolean; sessionData?: Omit<Session, 'pty'> } {
     const session = this.sessions.get(sessionId)
     if (!session) {
-      return false
+      return { success: false }
+    }
+
+    // 保存会话数据（不包含pty对象）
+    const sessionData: Omit<Session, 'pty'> = {
+      id: session.id,
+      cliName: session.cliName,
+      workingDirectory: session.workingDirectory,
+      createdAt: session.createdAt,
+      messages: session.messages,
+      output: session.output,
     }
 
     // 终止PTY进程
@@ -219,8 +251,8 @@ export class SessionManager {
       this.activeSessionId = null
     }
 
-    this.mainWindow?.webContents.send('session-closed', { sessionId })
-    return true
+    this.mainWindow?.webContents.send('session-closed', { sessionId, sessionData })
+    return { success: true, sessionData }
   }
 
   /**
@@ -237,6 +269,7 @@ export class SessionManager {
       workingDirectory: session.workingDirectory,
       createdAt: session.createdAt,
       messages: session.messages,
+      output: session.output,
     }
   }
 
@@ -274,6 +307,7 @@ export class SessionManager {
       workingDirectory: session.workingDirectory,
       createdAt: session.createdAt,
       messages: session.messages,
+      output: session.output,
     }))
   }
 
