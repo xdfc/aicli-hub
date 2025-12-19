@@ -59,6 +59,8 @@ interface AppState {
   sessions: Session[]
   sessionOutput: string
   isSessionReady: boolean
+  sessionOutputListener: (() => void) | null // 会话输出监听器清理函数
+  sessionIdleTimer: NodeJS.Timeout | null // 会话空闲超时计时器
 
   // Task state
   task: TaskState
@@ -131,6 +133,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessions: [],
   sessionOutput: '',
   isSessionReady: false,
+  sessionOutputListener: null,
+  sessionIdleTimer: null,
 
   task: {
     isRunning: false,
@@ -211,9 +215,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const api = getAPI()
 
+      // 清理之前的监听器（如果存在）
+      const { sessionOutputListener } = get()
+      if (sessionOutputListener) {
+        sessionOutputListener()
+      }
+
       // 设置会话输出监听器
+      let removeListener: (() => void) | null = null
       if (isElectronEnvironment()) {
-        api.onSessionOutput((data) => {
+        removeListener = api.onSessionOutput((data) => {
           if (data.sessionId === get().currentSessionId) {
             get().appendSessionOutput(data.data)
           }
@@ -237,6 +248,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         sessionOutput: '',
         isSessionReady: true,
         selectedHistoryId: null,
+        sessionOutputListener: removeListener,
         task: {
           isRunning: false,
           output: '',
@@ -254,6 +266,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   closeSession: async (sessionId: string) => {
     try {
+      // 清理监听器和计时器
+      const { sessionOutputListener, sessionIdleTimer } = get()
+      if (sessionOutputListener) {
+        sessionOutputListener()
+      }
+      if (sessionIdleTimer) {
+        clearTimeout(sessionIdleTimer)
+      }
+
       const api = getAPI()
       await api.sessionClose(sessionId)
 
@@ -262,6 +283,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId,
         sessionOutput: state.currentSessionId === sessionId ? '' : state.sessionOutput,
         isSessionReady: state.currentSessionId === sessionId ? false : state.isSessionReady,
+        sessionOutputListener: state.currentSessionId === sessionId ? null : state.sessionOutputListener,
+        sessionIdleTimer: state.currentSessionId === sessionId ? null : state.sessionIdleTimer,
       }))
 
       // 刷新历史记录
@@ -276,6 +299,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!currentSessionId) return
 
     try {
+      // 清理监听器和计时器
+      const { sessionOutputListener, sessionIdleTimer } = get()
+      if (sessionOutputListener) {
+        sessionOutputListener()
+      }
+      if (sessionIdleTimer) {
+        clearTimeout(sessionIdleTimer)
+      }
+
       const api = getAPI()
       await api.sessionClose(currentSessionId)
 
@@ -284,6 +316,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         sessionOutput: '',
         isSessionReady: false,
         selectedHistoryId: null,
+        sessionOutputListener: null,
+        sessionIdleTimer: null,
         task: {
           isRunning: false,
           output: '',
@@ -300,10 +334,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   sendSessionInput: async (input: string) => {
-    const { currentSessionId } = get()
+    const { currentSessionId, sessionIdleTimer } = get()
     if (!currentSessionId) {
       console.error('No active session')
       return false
+    }
+
+    // 清理之前的超时计时器
+    if (sessionIdleTimer) {
+      clearTimeout(sessionIdleTimer)
+      set({ sessionIdleTimer: null })
     }
 
     try {
@@ -318,6 +358,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           ...state.task,
           isRunning: true,
           startTime: Date.now(),
+          error: null, // 清除之前的错误
         },
       }))
 
@@ -339,6 +380,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   appendSessionOutput: (output: string) => {
+    const { sessionIdleTimer, task } = get()
+
+    // 清除之前的超时计时器
+    if (sessionIdleTimer) {
+      clearTimeout(sessionIdleTimer)
+    }
+
+    // 更新输出
     set((state) => ({
       sessionOutput: state.sessionOutput + output,
       task: {
@@ -346,6 +395,55 @@ export const useAppStore = create<AppState>((set, get) => ({
         output: state.task.output + output,
       },
     }))
+
+    // 只有在任务正在运行时才需要检测完成状态
+    if (!task.isRunning) {
+      return
+    }
+
+    // 检测命令提示符（判断命令是否执行完成）
+    const currentOutput = get().sessionOutput
+    const lastLines = currentOutput.split('\n').slice(-5).join('\n') // 只检查最后5行
+
+    // 常见CLI提示符模式
+    const promptPatterns = [
+      />\s*$/, // Claude: 以 > 结尾
+      />>>\s*$/, // Ollama: 以 >>> 结尾
+      /qwen>\s*$/i, // Qwen: 以 qwen> 结尾
+      /[\n\r].*[>$#]\s*$/, // 通用: 换行后出现 >, $, # 等提示符
+    ]
+
+    const hasPrompt = promptPatterns.some((pattern) => pattern.test(lastLines))
+
+    if (hasPrompt) {
+      // 检测到提示符，认为命令执行完成
+      set((state) => ({
+        task: {
+          ...state.task,
+          isRunning: false,
+          startTime: null,
+        },
+        sessionIdleTimer: null,
+      }))
+    } else {
+      // 没有检测到提示符，启动超时兴底机制（3秒无输出则认为完成）
+      const newTimer = setTimeout(() => {
+        const currentState = get()
+        if (currentState.task.isRunning) {
+          console.log('Session idle timeout - marking command as complete')
+          set((state) => ({
+            task: {
+              ...state.task,
+              isRunning: false,
+              startTime: null,
+            },
+            sessionIdleTimer: null,
+          }))
+        }
+      }, 3000) // 3秒超时
+
+      set({ sessionIdleTimer: newTimer })
+    }
   },
 
   clearSessionOutput: () => {
@@ -574,8 +672,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // New conversation action - 重置状态并回到对话页
   newConversation: () => {
+    // 清理监听器和计时器
+    const { currentSessionId, sessionOutputListener, sessionIdleTimer } = get()
+    
+    if (sessionOutputListener) {
+      sessionOutputListener()
+    }
+    
+    if (sessionIdleTimer) {
+      clearTimeout(sessionIdleTimer)
+    }
+    
     // 关闭当前会话
-    const { currentSessionId } = get()
     if (currentSessionId) {
       const api = getAPI()
       api.sessionClose(currentSessionId).catch(console.error)
@@ -586,6 +694,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessionOutput: '',
       isSessionReady: false,
       selectedHistoryId: null,
+      sessionOutputListener: null,
+      sessionIdleTimer: null,
       viewMode: 'chat',
       task: {
         isRunning: false,
